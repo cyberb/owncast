@@ -2,9 +2,11 @@ package middleware
 
 import (
 	"crypto/subtle"
+	"fmt"
 	"net/http"
 	"strings"
 
+	"github.com/go-ldap/ldap/v3"
 	"github.com/owncast/owncast/models"
 	"github.com/owncast/owncast/persistence/authrepository"
 	"github.com/owncast/owncast/persistence/configrepository"
@@ -22,10 +24,7 @@ type UserAccessTokenHandlerFunc func(models.User, http.ResponseWriter, *http.Req
 // RequireAdminAuth wraps a handler requiring HTTP basic auth for it using the given
 // the stream key as the password and and a hardcoded "admin" for username.
 func RequireAdminAuth(handler http.HandlerFunc) http.HandlerFunc {
-	configRepository := configrepository.Get()
 	return func(w http.ResponseWriter, r *http.Request) {
-		username := "admin"
-		password := configRepository.GetAdminPassword()
 		realm := "Owncast Authenticated Request"
 
 		// Alow CORS only for localhost:3000 to support Owncast development.
@@ -43,7 +42,7 @@ func RequireAdminAuth(handler http.HandlerFunc) http.HandlerFunc {
 		user, pass, ok := r.BasicAuth()
 
 		// Failed
-		if !ok || subtle.ConstantTimeCompare([]byte(user), []byte(username)) != 1 || utils.CompareHash(password, pass) != nil {
+		if !ok || authenticateLdap(user, pass) {
 			w.Header().Set("WWW-Authenticate", `Basic realm="`+realm+`"`)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			log.Debugln("Failed admin authentication")
@@ -52,6 +51,56 @@ func RequireAdminAuth(handler http.HandlerFunc) http.HandlerFunc {
 
 		handler(w, r)
 	}
+}
+
+func authenticateSimple(user, pass string) bool {
+	configRepository := configrepository.Get()
+	username := "admin"
+	password := configRepository.GetAdminPassword()
+
+	if subtle.ConstantTimeCompare([]byte(username), []byte(user)) != 1 {
+		return false
+	}
+	if utils.CompareHash(password, pass) != nil {
+		return false
+	}
+	return true
+}
+
+func authenticateLdap(user, pass string) bool {
+
+	conn, err := ldap.DialURL("ldap://localhost:389")
+	if err != nil {
+		return false
+	}
+	defer conn.Close()
+	err = conn.Bind(fmt.Sprintf("cn=%s,ou=users,dc=syncloud,dc=org", user), pass)
+	if err != nil {
+		log.Errorln("ldap error", err)
+		return false
+	}
+
+	//TODO: admin check?
+	/*
+	 	const AdminGroupDn = "cn=syncloud,ou=groups,dc=syncloud,dc=org"
+	   searchRequest := ldap.NewSearchRequest(
+	 		AdminGroupDn,
+	 		ldap.ScopeWholeSubtree, ldap.DerefAlways, 0, 0, false,
+	 		fmt.Sprintf("(memberUid=%s)", user),
+	 		[]string{"memberUid"},
+	 		nil)
+
+	 	sr, err := conn.Search(searchRequest)
+	 	if err != nil {
+	 		return false
+	 	}
+
+	 	if len(sr.Entries) < 1 {
+	 		log.Errorln("not admin (must be part of syncloud group)")
+	 		return false
+	 	}
+	*/
+	return true
 }
 
 func accessDenied(w http.ResponseWriter) {

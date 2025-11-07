@@ -1,9 +1,10 @@
 package router
 
 import (
- "net"
 	"fmt"
+	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -85,28 +86,35 @@ func Start(enableVerboseLogging bool) error {
 	})
 
 	port := config.WebServerPort
-	ip := config.WebServerIP
+	host := config.WebServerIP
 
 	compress, _ := httpcompression.DefaultAdapter() // Use the default configuration
 	server := &http.Server{
-		//Addr:              fmt.Sprintf("%s:%d", ip, port),
 		ReadHeaderTimeout: 4 * time.Second,
 		Handler:           compress(m),
 	}
 
-	if ip != "0.0.0.0" {
-		log.Infof("Web server is listening at %s:%d.", ip, port)
+	network := "tcp"
+	address := fmt.Sprintf("%s:%d", host, port)
+	if strings.HasPrefix(host, "/") {
+		network = "unix"
+		address = host
+		if _, err := os.Stat(host); err == nil {
+			if err := os.Remove(host); err != nil {
+				return fmt.Errorf("failed to remove existing unix socket: %w", err)
+			}
+		}
+		log.Infof("Web server is listening at unix socket: %s", host)
 	} else {
-		log.Infof("Web server is listening on port %d.", port)
+		if host != "0.0.0.0" {
+			log.Infof("Web server is listening at %s:%d", host, port)
+		} else {
+			log.Infof("Web server is listening on port %d", port)
+		}
 	}
 	log.Infoln("Configure this server by visiting /admin.")
- network := "tcp"
- address := fmt.Sprintf("%s:%d", ip, port)
- if strings.HasPrefix(ip, "/") {
-   network = "unix"
-   address = ip
- }
- listener, err := net.Listen(network, address)
+
+	listener, err := net.Listen(network, address)
 	if err != nil {
 		return err
 	}
