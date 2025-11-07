@@ -1,6 +1,7 @@
 package router
 
 import (
+ "net"
 	"fmt"
 	"net/http"
 	"strings"
@@ -88,7 +89,7 @@ func Start(enableVerboseLogging bool) error {
 
 	compress, _ := httpcompression.DefaultAdapter() // Use the default configuration
 	server := &http.Server{
-		Addr:              fmt.Sprintf("%s:%d", ip, port),
+		//Addr:              fmt.Sprintf("%s:%d", ip, port),
 		ReadHeaderTimeout: 4 * time.Second,
 		Handler:           compress(m),
 	}
@@ -99,8 +100,18 @@ func Start(enableVerboseLogging bool) error {
 		log.Infof("Web server is listening on port %d.", port)
 	}
 	log.Infoln("Configure this server by visiting /admin.")
+ network := "tcp"
+ address := fmt.Sprintf("%s:%d", ip, port)
+ if strings.HasPrefix(ip, "/") {
+   network = "unix"
+   address = ip
+ }
+ listener, err := net.Listen(network, address)
+	if err != nil {
+		return err
+	}
 
-	return server.ListenAndServe()
+	return server.Serve(listener)
 }
 
 func addStaticFileEndpoints(r chi.Router) {
