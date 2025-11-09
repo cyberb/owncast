@@ -11,6 +11,7 @@ import (
 	"time"
 
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
+	"github.com/owncast/owncast/config"
 	"github.com/owncast/owncast/utils"
 	"github.com/rifflock/lfshook"
 	log "github.com/sirupsen/logrus"
@@ -30,36 +31,38 @@ var Logger *OCLogger
 
 // Setup configures our custom logging destinations.
 func Setup(enableDebugOptions bool, enableVerboseLogging bool) {
-	// Create the logging directory if needed
-	loggingDirectory := filepath.Dir(getLogFilePath())
-	if !utils.DoesFileExists(loggingDirectory) {
-		if err := os.Mkdir(loggingDirectory, 0o700); err != nil {
-			log.Errorln("unable to create logs directory", loggingDirectory, err)
+	if config.LogFilePath != "console:" {
+		// Create the logging directory if needed
+		loggingDirectory := filepath.Dir(config.LogFilePath)
+		if !utils.DoesFileExists(loggingDirectory) {
+			if err := os.Mkdir(loggingDirectory, 0o700); err != nil {
+				log.Errorln("unable to create logs directory", loggingDirectory, err)
+			}
 		}
+
+		// Write logs to a file
+		path := config.LogFilePath
+		writer, _ := rotatelogs.New(
+			path+".%Y%m%d%H%M",
+			rotatelogs.WithLinkName(path),
+			rotatelogs.WithMaxAge(time.Duration(86400)*time.Second),
+			rotatelogs.WithRotationTime(time.Duration(604800)*time.Second),
+		)
+
+		logMapping := lfshook.WriterMap{
+			log.InfoLevel:  writer,
+			log.DebugLevel: writer,
+			log.TraceLevel: writer,
+			log.WarnLevel:  writer,
+			log.ErrorLevel: writer,
+			log.FatalLevel: writer,
+		}
+
+		log.AddHook(lfshook.NewHook(
+			logMapping,
+			&log.TextFormatter{},
+		))
 	}
-
-	// Write logs to a file
-	path := getLogFilePath()
-	writer, _ := rotatelogs.New(
-		path+".%Y%m%d%H%M",
-		rotatelogs.WithLinkName(path),
-		rotatelogs.WithMaxAge(time.Duration(86400)*time.Second),
-		rotatelogs.WithRotationTime(time.Duration(604800)*time.Second),
-	)
-
-	logMapping := lfshook.WriterMap{
-		log.InfoLevel:  writer,
-		log.DebugLevel: writer,
-		log.TraceLevel: writer,
-		log.WarnLevel:  writer,
-		log.ErrorLevel: writer,
-		log.FatalLevel: writer,
-	}
-
-	log.AddHook(lfshook.NewHook(
-		logMapping,
-		&log.TextFormatter{},
-	))
 
 	if enableVerboseLogging {
 		log.SetLevel(log.TraceLevel)

@@ -7,8 +7,6 @@ const (
 	StaticVersionNumber = "0.2.3" // Shown when you build from develop
 	// FfmpegSuggestedVersion is the version of ffmpeg we suggest.
 	FfmpegSuggestedVersion = "v4.1.5" // Requires the v
-	// DataDirectory is the directory we save data to.
-	DataDirectory = "data"
 	// EmojiDir defines the URL route prefix for emoji requests.
 	EmojiDir = "/img/emoji/"
 	// MaxUserColor is the largest color value available to assign to users.
@@ -19,6 +17,10 @@ const (
 )
 
 var (
+
+	// DataDirectory is the directory we save data to.
+	DataDirectory = "data"
+
 	// BackupDirectory is the directory we write backup files to.
 	BackupDirectory = filepath.Join(DataDirectory, "backup")
 

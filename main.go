@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/owncast/owncast/logging"
@@ -20,6 +21,9 @@ import (
 var (
 	dbFile                = flag.String("database", "", "Path to the database file.")
 	logDirectory          = flag.String("logdir", "", "Directory where logs will be written to")
+	transcoderLogFilePath = flag.String("transcoderLogFilePath", "", "transaction log full path")
+	logFilePath           = flag.String("logFilePath", "", "log full path or 'console:' to log only to console")
+	dataDirectory         = flag.String("datadir", "", "Directory where all data files be written to")
 	backupDirectory       = flag.String("backupdir", "", "Directory where backups will be written to")
 	enableDebugOptions    = flag.Bool("enableDebugFeatures", false, "Enable additional debugging options.")
 	enableVerboseLogging  = flag.Bool("enableVerboseLogging", false, "Enable additional logging.")
@@ -39,13 +43,26 @@ func main() {
 		config.LogDirectory = *logDirectory
 	}
 
+	config.TranscoderLogFilePath = filepath.Join(config.LogDirectory, "transcoder.log")
+	if *transcoderLogFilePath != "" {
+		config.TranscoderLogFilePath = *transcoderLogFilePath
+	}
+
+	config.LogFilePath = filepath.Join(config.LogDirectory, "owncast.log")
+	if *logFilePath != "" {
+		config.LogFilePath = *logFilePath
+	}
+
 	if *backupDirectory != "" {
 		config.BackupDirectory = *backupDirectory
 	}
+	if *dataDirectory != "" {
+		config.DataDirectory = *dataDirectory
+	}
 
 	// Create the data directory if needed
-	if !utils.DoesFileExists("data") {
-		if err := os.Mkdir("./data", 0o700); err != nil {
+	if !utils.DoesFileExists(config.DataDirectory) {
+		if err := os.Mkdir(config.DataDirectory, 0o700); err != nil {
 			log.Fatalln("Cannot create data directory", err)
 		}
 	}

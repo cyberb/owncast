@@ -12,6 +12,8 @@ var DatabaseFilePath = "data/owncast.db"
 
 // LogDirectory is the path to various log files.
 var LogDirectory = "./data/logs"
+var LogFilePath = ""
+var TranscoderLogFilePath = ""
 
 // TempDir is where we store temporary files.
 var TempDir = "./data/tmp"

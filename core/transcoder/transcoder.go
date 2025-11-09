@@ -13,7 +13,6 @@ import (
 	"github.com/teris-io/shortid"
 
 	"github.com/owncast/owncast/config"
-	"github.com/owncast/owncast/logging"
 	"github.com/owncast/owncast/models"
 	"github.com/owncast/owncast/persistence/configrepository"
 	"github.com/owncast/owncast/utils"
@@ -149,7 +148,7 @@ func (t *Transcoder) Start(shouldLog bool) {
 	}
 
 	if err := _commandExec.Start(); err != nil {
-		log.Errorln("Transcoder error. See", logging.GetTranscoderLogFilePath(), "for full output to debug.")
+		log.Errorln("Transcoder error. See", config.TranscoderLogFilePath, "for full output to debug.")
 		log.Panicln(err, command)
 	}
 
@@ -167,7 +166,7 @@ func (t *Transcoder) Start(shouldLog bool) {
 	}
 
 	if err != nil {
-		log.Errorln("transcoding error. look at", logging.GetTranscoderLogFilePath(), "to help debug. your copy of ffmpeg may not support your selected codec of", t.codec.Name(), "https://owncast.online/docs/codecs/")
+		log.Errorln("transcoding error. look at", config.TranscoderLogFilePath, "to help debug. your copy of ffmpeg may not support your selected codec of", t.codec.Name(), "https://owncast.online/docs/codecs/")
 	}
 }
 
@@ -216,7 +215,7 @@ func (t *Transcoder) getFlags() *execInfo {
 		hlsOptionsString = append(hlsOptionsString, "-hls_flags", strings.Join(hlsOptionFlags, "+"))
 	}
 
-	logPath := logging.GetTranscoderLogFilePath()
+	logPath := config.TranscoderLogFilePath
 	reportEnv := fmt.Sprintf(`FFREPORT=file=%s:level=32`, logPath)
 	if runtime.GOOS == "windows" {
 		logPath = strings.ReplaceAll(logPath, "\\", "/")
