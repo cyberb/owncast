@@ -42,7 +42,7 @@ func RequireAdminAuth(handler http.HandlerFunc) http.HandlerFunc {
 		user, pass, ok := r.BasicAuth()
 
 		// Failed
-		if !ok || authenticateLdap(user, pass) {
+		if !ok || !authenticateLdap(user, pass) {
 			w.Header().Set("WWW-Authenticate", `Basic realm="`+realm+`"`)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			log.Debugln("Failed admin authentication")
